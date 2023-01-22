@@ -141,22 +141,28 @@ class PawnChessTrainer:
         for index in range(board_length):
             if end_board[index] - start_board[index] != 0:
                 changed_field_indexes.append(index)
+        if len(changed_field_indexes) != (0 or 2):
+            changed_field_indexes = [0] * 2
 
         difference_mappings = {
             0: 0,  # no change
             7: 1,  # left
             8: 2,  # straight
-            9: 3  # right
+            9: 3,  # right
+            16: 4  # 2 straight
         }
 
         if len(changed_field_indexes) == 0:
             return difference_mappings[0]
-        if len(changed_field_indexes) != 2:
-            raise Exception(f"boards have {len(changed_field_indexes)} changes instead of 2 or 0")
 
         index_difference = changed_field_indexes[1] - changed_field_indexes[0]
-
-        return difference_mappings[index_difference]
+        try:
+            return [changed_field_indexes[1], difference_mappings[index_difference]]
+        except KeyError:
+            print("invalid move, emptying board")
+            start_board = [board_length * [0]]
+            end_board = [board_length * [0]]
+            return self.convert_boards_to_direction(start_board, end_board)
 
 
 board_size = 8
@@ -167,6 +173,8 @@ trainer = PawnChessTrainer()
 
 board_variants = trainer.read_serialized_variants()
 board_solutions = trainer.read_serialized_solutions()
+if len(board_variants) != len(board_solutions):
+    raise IndexError("files don't have the same length!")
 
 string_bool_dict = {
     "0": False,
@@ -206,15 +214,30 @@ while True:
 
         trainer.draw_board(current_board_variant)
 
-        special_inputs = ["n", "0", "s", "c"]
+        special_inputs = ["n", "0", "s", "c", "d"]
         try:
             print(f"set {len(board_variants) + 1}")
-            start_field = input("input 0, n, s, c or start field: ")
+            start_field = input("input 0, n, c, d, s or start field: ")
             destination_field = 0
             if start_field not in special_inputs:
                 destination_field = input("input destination field: ")
             elif start_field == "n" or start_field == "0":
                 pass
+            elif start_field == "d":
+                print(board_variants)
+                print(board_solutions)
+                board_directions_file = open("directions.dat", "wb")
+                board_directions = []
+                for index in range(len(board_variants)):
+                    board_directions.append(
+                        trainer.convert_boards_to_direction(board_variants[index], board_solutions[index]))
+                board_directions_file.close()
+                print(board_directions)
+
+                with open("data.txt", "w") as data_out_file:
+                    data_out_file.write(f"{board_variants}\n\n{board_solutions}\n\n{board_directions}")
+
+                continue
             elif start_field == "s":
                 print("redoing setup")
                 break
