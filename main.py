@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from keras import regularizers
 from matplotlib import pyplot as pp
 from PIL import Image
 import tensorflow as tf
@@ -48,15 +49,17 @@ print(*train_fig_moves_directions)
 
 train_fig_starts_tensor = tf.constant(train_fig_starts)
 
-inputs = tf.keras.layers.Input(shape=64)
-x = tf.keras.layers.Dense(64, activation="relu")(inputs)
-x = tf.keras.layers.Dense(64, activation="relu")(x)
+inputs = tf.keras.layers.Input(shape=64, name="board_input")
 
-out_field = tf.keras.layers.Dense(64, activation="relu", name="field")(x)
-out_field = tf.keras.layers.Softmax(name="field_softmax")(out_field)
+x = tf.keras.layers.Dense(32, activation="elu", kernel_regularizer=regularizers.l2(0.001))(inputs)
+x = tf.keras.layers.Dropout(0.5)(x)
+x = tf.keras.layers.Dense(32, activation="sigmoid", kernel_regularizer=regularizers.l2(0.001))(x)
+x = tf.keras.layers.Dropout(0.5)(x)
 
-out_movement = tf.keras.layers.Dense(5, activation="relu", name="movement")(x)
-out_movement = tf.keras.layers.Softmax(name="movement_softmax")(out_movement)
+out_field = tf.keras.layers.Dense(64,  name="field")(x)
+
+out_movement = tf.keras.layers.Dense(5, name="movement")(x)
+
 
 model = tf.keras.Model(inputs=inputs, outputs=[out_field, out_movement])
 
@@ -64,11 +67,15 @@ print(model.summary())
 tf.keras.utils.plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
 
 model.compile(optimizer='adam',
-              loss=[tf.keras.losses.CategoricalCrossentropy(),
-                    tf.keras.losses.CategoricalCrossentropy()],
+              loss=[tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+                    tf.keras.losses.CategoricalCrossentropy(from_logits=True)],
               metrics=['accuracy'])
 
-model.fit(train_fig_starts_tensor, [train_fig_moves_fields, train_fig_moves_directions], epochs=128)
+evaluation_fit_slice = 300
+
+model.fit(train_fig_starts_tensor[:evaluation_fit_slice],
+          [train_fig_moves_fields[:evaluation_fit_slice],
+           train_fig_moves_directions[:evaluation_fit_slice]], epochs=128)
 
 trainer = PawnChessTrainer()
 
@@ -76,11 +83,19 @@ trainer = PawnChessTrainer()
     trainer.draw_board(train_fig_starts[index])
     print(train_fig_moves[index])"""    # test display of training data
 
-boards = trainer.generate_multiple_random_boards(32, 8, 16)
+boards = trainer.generate_multiple_random_boards(16, 8, 8, included_fields=range(8, 64))
 boards.append([2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1])
+
+print("evaluation:")
+print(model.evaluate(train_fig_starts_tensor[evaluation_fit_slice:],
+                     [train_fig_moves_fields[evaluation_fit_slice:],
+                      train_fig_moves_directions[evaluation_fit_slice:]]))
+
+
 for board in boards:
     trainer.draw_board(board)
     out = model.predict([board])
     print([np.argmax(out[0]), np.argmax(out[1])])
-    sleep(6)
+    pp.pause(5)
+
