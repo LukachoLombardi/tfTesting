@@ -54,7 +54,7 @@ while True:
 
         special_inputs = ["n", "0", "s", "c", "d", "r"]
         try:
-            print(f"set {len(board_variants) + 1}")
+            print(f"set {len(board_variants) + 1}/{len(board_solutions) + 1}")
             start_field = input("input 0, n, c, d, s, r or start field: ")
             if start_field not in special_inputs:
                 destination_field = input("input destination field: ")
@@ -100,8 +100,10 @@ while True:
                 for i in range(len(index_to_remove)):
                     index_to_remove[i] = int(index_to_remove[i])
 
-                board_variants.pop(index_to_remove)
-                board_solutions.pop(index_to_remove)
+                for i in index_to_remove:
+                    board_variants.pop(i)
+                    board_solutions.pop(i)
+                continue
 
             using_custom = False
             current_board_solution = trainer.prompt_solution(current_board_variant, start_field, destination_field)
