@@ -1,3 +1,5 @@
+import random
+from enum import Enum
 from matplotlib import pyplot as pp
 from PIL import Image
 from random import randint
@@ -160,3 +162,106 @@ class PawnChessTrainer:
             start_board = [board_length * [0]]
             end_board = [board_length * [0]]
             return self.convert_boards_to_direction(start_board, end_board)
+
+    def calculate_best_move_64(self, start_board: list) -> list:
+        # priority list:
+        # 0. declare the game as over (by pieces having won)
+        # 1. win the game
+        # 2. attack enemy pieces
+        # 3. move forward
+        # 4. declare the game as over (by the player being blocked) -> base case
+
+        def transform_board(board_to_transform: list, moving_piece, moving_destination, replace_int = 1) -> list:
+            transforming_board = board_to_transform
+            transforming_board[moving_destination] = transforming_board[moving_piece]
+            transforming_board[moving_piece] = 0
+            return transforming_board
+
+        working_board = start_board
+
+        class State(Enum):
+            WIN = 0
+            ATTACK = 1
+            MOVE = 2
+            OVER = 3
+
+        player_pieces = []
+        non_blocked_player_pieces = []
+        enemy_pieces = []
+
+        # finding all pieces
+        for index in range(len(start_board)):
+            match start_board[index]:
+                case 1:
+                    player_pieces.append(index)
+                case 2:
+                    enemy_pieces.append(index)
+        non_blocked_player_pieces = player_pieces
+
+        attackers_attacked = []
+        possible_winning_pieces = []
+        two_field_movable_pieces = []
+
+        # filtering out blocked pieces
+        current_state = State.OVER
+        for non_blocked_player_piece in non_blocked_player_pieces:
+            for enemy_piece in enemy_pieces:
+                # piece is blocked or on last row
+                if non_blocked_player_piece - enemy_piece == 8 or non_blocked_player_piece in range(0, 8):
+                    non_blocked_player_pieces.remove(non_blocked_player_piece)
+
+        # declaring the game as over (by blocking) (4.) -> standard case
+
+        # checking for possible forward movement (3.)
+        if len(non_blocked_player_pieces) > 0:
+            current_state = State.MOVE
+            # also filtering for pieces eligible for first move bonus
+            for non_blocked_player_piece in non_blocked_player_pieces:
+                if non_blocked_player_piece - 16 not in enemy_pieces and non_blocked_player_piece in range(56, 64):
+                    two_field_movable_pieces.append(non_blocked_player_piece)
+
+        # checking for attachable pieces (2.)
+        for player_piece in player_pieces:
+            for enemy_piece in enemy_pieces:
+                if player_piece - enemy_piece in [7, 9]:
+                    current_state = State.ATTACK
+                    attackers_attacked.append([player_piece, enemy_piece])
+
+        # checking for possible winning pieces (1.)
+        for non_blocked_player_piece in non_blocked_player_pieces:
+            if non_blocked_player_piece in range(8, 16):
+                current_state = State.WIN
+                possible_winning_pieces.append(non_blocked_player_piece)
+
+        # declaring the game as over (by pieces having won) (0.)
+        for player_winning_field in range(0, 8):
+            if player_winning_field in player_pieces:
+                current_state = State.OVER
+        for enemy_winning_field in range(56, 64):
+            if enemy_winning_field in enemy_pieces:
+                current_state = State.OVER
+
+        # processing final state into output
+        chosen_piece: int
+        chosen_destination: int
+        match current_state:
+            case State.OVER:
+                return start_board
+            case State.WIN:
+                chosen_piece = random.choice(possible_winning_pieces)
+                chosen_destination = chosen_piece - 8
+            case State.ATTACK:
+                possible_attacking_pieces = [item[0] for item in attackers_attacked]
+                possible_attacked_pieces = [item[1] for item in attackers_attacked]
+                chosen_piece = random.choice(possible_attacking_pieces)
+                chosen_destination = possible_attacked_pieces[possible_attacking_pieces.index(chosen_piece)]
+            case State.MOVE:
+                chosen_piece = random.choice(non_blocked_player_pieces)
+                if chosen_piece in two_field_movable_pieces:
+                    chosen_destination = chosen_piece + 16
+                else:
+                    chosen_destination = chosen_piece + 8
+
+        return transform_board(working_board, chosen_piece, chosen_destination, 1)
+
+

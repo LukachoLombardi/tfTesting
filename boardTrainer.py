@@ -53,10 +53,10 @@ while True:
 
         trainer.draw_board(current_board_variant)
 
-        special_inputs = ["n", "0", "s", "c", "d", "r"]
+        special_inputs = ["n", "0", "s", "c", "d", "r", "a"]
         try:
             print(f"set {len(board_variants) + 1}/{len(board_solutions) + 1}")
-            start_field = input("input 0, n, c, d, s, r or start field: ")
+            start_field = input("input 0, n, c, d, s, r, a or start field: ")
             if start_field not in special_inputs:
                 destination_field = input("input destination field: ")
             elif start_field == "n" or start_field == "0":
@@ -104,9 +104,12 @@ while True:
                     board_variants.pop(i)
                     board_solutions.pop(i)
                 continue
+            elif start_field == "a":
+                current_board_solution = trainer.calculate_best_move_64(current_board_variant)
+            else:
+                current_board_solution = trainer.prompt_solution(current_board_variant, start_field, destination_field)
 
             using_custom = False
-            current_board_solution = trainer.prompt_solution(current_board_variant, start_field, destination_field)
         except ValueError:
             print("invalid input, skipping")
             print(traceback.format_exc())
