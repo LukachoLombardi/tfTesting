@@ -1,3 +1,4 @@
+import traceback
 from pickle import dump
 from random import randint
 
@@ -74,7 +75,6 @@ while True:
 
                 with open("data.txt", "w") as data_out_file:
                     data_out_file.write(f"{board_variants}\n\n{board_solutions}\n\n{board_directions}")
-
                 continue
             elif start_field == "s":
                 print("redoing setup")
@@ -109,9 +109,11 @@ while True:
             current_board_solution = trainer.prompt_solution(current_board_variant, start_field, destination_field)
         except ValueError:
             print("invalid input, skipping")
+            print(traceback.format_exc())
             continue
         except IndexError:
             print("index out of range, skipping")
+            print(traceback.format_exc())
             continue
 
         board_variants.append(current_board_variant)

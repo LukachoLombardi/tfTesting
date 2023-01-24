@@ -135,8 +135,9 @@ class PawnChessTrainer:
         for index in range(board_length):
             if end_board[index] - start_board[index] != 0:
                 changed_field_indexes.append(index)
-        if len(changed_field_indexes) != 0 and len(changed_field_indexes) != 2:
-            changed_field_indexes = [0] * 2
+        if len(changed_field_indexes) not in [0, 2]:
+            changed_field_indexes = [0, 0]
+            return changed_field_indexes
 
         difference_mappings = {
             0: 0,  # no change
@@ -146,8 +147,10 @@ class PawnChessTrainer:
             16: 4  # 2 straight
         }
 
-        if len(changed_field_indexes) == 0:
-            return [randint(0, len(start_board)-1), difference_mappings[0]]
+        if len(changed_field_indexes) == 0 and (1 in start_board):
+            return [start_board.index(1), difference_mappings[0]]
+        elif 1 not in start_board:
+            return [randint(0, len(start_board) - 1), 0]
 
         index_difference = changed_field_indexes[1] - changed_field_indexes[0]
         try:
