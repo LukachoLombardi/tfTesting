@@ -44,12 +44,11 @@ class PawnChessTrainer:
             pp.grid = False
             pp.xticks([])
             pp.yticks([])
-            pp.text(-0.1, 0.1, i)
+            pp.text(-0.4, 0.25, i, size=18)
             pp.imshow(self.field_color_dict[board[i]])
             pp.fill()
         pp.show(block=False)
 
-    # displays the board passed as the parameter,
     # then asks users to enter a pawn move using startfield-destfield notation
     # or 0 if no move should be made. Afterwards it displays the solved board and a cleared one seperated by delays
     def prompt_solution(self, board: list, input_start, input_destination):

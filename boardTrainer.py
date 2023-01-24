@@ -1,4 +1,6 @@
 from pickle import dump
+from random import randint
+
 from PawnChessTrainer import PawnChessTrainer
 
 board_size = 8
@@ -50,15 +52,15 @@ while True:
 
         trainer.draw_board(current_board_variant)
 
-        special_inputs = ["n", "0", "s", "c", "d"]
+        special_inputs = ["n", "0", "s", "c", "d", "r"]
         try:
             print(f"set {len(board_variants) + 1}")
-            start_field = input("input 0, n, c, d, s or start field: ")
-            destination_field = 0
+            start_field = input("input 0, n, c, d, s, r or start field: ")
             if start_field not in special_inputs:
                 destination_field = input("input destination field: ")
             elif start_field == "n" or start_field == "0":
-                pass
+                start_field = randint(0, board_size-1)
+                destination_field = start_field
             elif start_field == "d":
                 print(board_variants)
                 print(board_solutions)
@@ -92,6 +94,14 @@ while True:
                 current_board_variant = custom_board
                 using_custom = True
                 continue
+            elif start_field == "r":
+                index_to_remove = input("indexes to  (seperate with ,): ").split(",")
+                print(index_to_remove)
+                for i in range(len(index_to_remove)):
+                    index_to_remove[i] = int(index_to_remove[i])
+
+                board_variants.pop(index_to_remove)
+                board_solutions.pop(index_to_remove)
 
             using_custom = False
             current_board_solution = trainer.prompt_solution(current_board_variant, start_field, destination_field)
