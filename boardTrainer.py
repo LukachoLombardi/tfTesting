@@ -55,10 +55,11 @@ while True:
 
         special_inputs = ["n", "0", "s", "c", "d", "r", "a"]
         try:
-            print(f"set {len(board_variants) + 1}/{len(board_solutions) + 1}")
+            print(f"set {len(board_variants)-1}/{len(board_solutions)-1}")
             start_field = input("input 0, n, c, d, s, r, a or start field: ")
             if start_field not in special_inputs:
                 destination_field = input("input destination field: ")
+                current_board_solution = trainer.prompt_solution(current_board_variant, start_field, destination_field)
             elif start_field == "n" or start_field == "0":
                 start_field = randint(0, board_size-1)
                 destination_field = start_field
@@ -95,7 +96,7 @@ while True:
                 using_custom = True
                 continue
             elif start_field == "r":
-                index_to_remove = input("indexes to  (seperate with ,): ").split(",")
+                index_to_remove = input("indexes to remove(separate with ,): ").split(",")
                 print(index_to_remove)
                 for i in range(len(index_to_remove)):
                     index_to_remove[i] = int(index_to_remove[i])
@@ -106,8 +107,7 @@ while True:
                 continue
             elif start_field == "a":
                 current_board_solution = trainer.calculate_best_move_64(current_board_variant)
-            else:
-                current_board_solution = trainer.prompt_solution(current_board_variant, start_field, destination_field)
+                trainer.draw_board(current_board_solution)
 
             using_custom = False
         except ValueError:

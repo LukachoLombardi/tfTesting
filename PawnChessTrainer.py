@@ -165,19 +165,32 @@ class PawnChessTrainer:
 
     def calculate_best_move_64(self, start_board: list) -> list:
         # priority list:
-        # 0. declare the game as over (by pieces having won)
+        # 0. declare the game as over (by pieces having won or by only one color remaining)
         # 1. win the game
         # 2. attack enemy pieces
         # 3. move forward
         # 4. declare the game as over (by the player being blocked) -> base case
 
-        def transform_board(board_to_transform: list, moving_piece, moving_destination, replace_int = 1) -> list:
-            transforming_board = board_to_transform
-            transforming_board[moving_destination] = transforming_board[moving_piece]
+        def transform_board(board_to_transform: list, moving_piece, moving_destination) -> list:
+            transforming_board = board_to_transform.copy()
+            moving_piece_value = transforming_board[moving_piece]
             transforming_board[moving_piece] = 0
+            transforming_board[moving_destination] = moving_piece_value
             return transforming_board
 
-        working_board = start_board
+        def are_in_same_row(field_1, field_2):
+            board = [0]*64
+            board[field_1] = 1
+            board[field_2] = 2
+            list_chunks = []
+            for i in range(7, 64, 8):
+                list_chunks.append(board[i-7:i+1])
+            for chunk in list_chunks:
+                if (1 and 2) in chunk:
+                    return True
+            return False
+
+        working_board = start_board.copy()
 
         class State(Enum):
             WIN = 0
@@ -190,12 +203,11 @@ class PawnChessTrainer:
         enemy_pieces = []
 
         # finding all pieces
-        for index in range(len(start_board)):
-            match start_board[index]:
-                case 1:
-                    player_pieces.append(index)
-                case 2:
-                    enemy_pieces.append(index)
+        for index in range(0, len(working_board), 1):
+            if working_board[index] == 1:
+                player_pieces.append(index)
+            if working_board[index] == 2:
+                enemy_pieces.append(index)
         non_blocked_player_pieces = player_pieces
 
         attackers_attacked = []
@@ -205,10 +217,12 @@ class PawnChessTrainer:
         # filtering out blocked pieces
         current_state = State.OVER
         for non_blocked_player_piece in non_blocked_player_pieces:
-            for enemy_piece in enemy_pieces:
+            for checked_piece in enemy_pieces + player_pieces:
                 # piece is blocked or on last row
-                if non_blocked_player_piece - enemy_piece == 8 or non_blocked_player_piece in range(0, 8):
-                    non_blocked_player_pieces.remove(non_blocked_player_piece)
+                if non_blocked_player_piece - checked_piece == 8 or non_blocked_player_piece in range(0, 8):
+                    if non_blocked_player_piece in non_blocked_player_pieces:
+                        non_blocked_player_pieces.remove(non_blocked_player_piece)
+
 
         # declaring the game as over (by blocking) (4.) -> standard case
 
@@ -220,10 +234,10 @@ class PawnChessTrainer:
                 if non_blocked_player_piece - 16 not in enemy_pieces and non_blocked_player_piece in range(56, 64):
                     two_field_movable_pieces.append(non_blocked_player_piece)
 
-        # checking for attachable pieces (2.)
+        # checking for attackable pieces (2.)
         for player_piece in player_pieces:
             for enemy_piece in enemy_pieces:
-                if player_piece - enemy_piece in [7, 9]:
+                if player_piece - enemy_piece in [7, 9] and not are_in_same_row(player_piece, enemy_piece):
                     current_state = State.ATTACK
                     attackers_attacked.append([player_piece, enemy_piece])
 
@@ -233,20 +247,23 @@ class PawnChessTrainer:
                 current_state = State.WIN
                 possible_winning_pieces.append(non_blocked_player_piece)
 
-        # declaring the game as over (by pieces having won) (0.)
+        # declaring the game as over (by pieces having won/only one color remaining) (0.)
         for player_winning_field in range(0, 8):
             if player_winning_field in player_pieces:
                 current_state = State.OVER
         for enemy_winning_field in range(56, 64):
             if enemy_winning_field in enemy_pieces:
                 current_state = State.OVER
+        if len(enemy_pieces) == 0:
+            current_state = State.OVER
 
         # processing final state into output
         chosen_piece: int
         chosen_destination: int
         match current_state:
             case State.OVER:
-                return start_board
+                chosen_piece = 0
+                chosen_destination = 0
             case State.WIN:
                 chosen_piece = random.choice(possible_winning_pieces)
                 chosen_destination = chosen_piece - 8
@@ -256,12 +273,20 @@ class PawnChessTrainer:
                 chosen_piece = random.choice(possible_attacking_pieces)
                 chosen_destination = possible_attacked_pieces[possible_attacking_pieces.index(chosen_piece)]
             case State.MOVE:
-                chosen_piece = random.choice(non_blocked_player_pieces)
+                chosen_piece = min(non_blocked_player_pieces)
                 if chosen_piece in two_field_movable_pieces:
-                    chosen_destination = chosen_piece + 16
+                    chosen_destination = chosen_piece - 16
                 else:
-                    chosen_destination = chosen_piece + 8
-
-        return transform_board(working_board, chosen_piece, chosen_destination, 1)
+                    chosen_destination = chosen_piece - 8
 
 
+        print(f"determined piece {chosen_piece}, chosen destination {chosen_destination} "
+              f"with state {current_state}\n"
+              f"player_pieces: {player_pieces}\n"
+              f"non_blocked_player_pieces: {non_blocked_player_pieces}\n"
+              f"enemy_pieces: {enemy_pieces}\n"
+              f"attackers_attacked: {attackers_attacked}\n"
+              f"possible_winning_pieces: {possible_winning_pieces}\n"
+              f"two_field_movable_pieces: {two_field_movable_pieces}")
+
+        return transform_board(working_board, chosen_piece, chosen_destination)
