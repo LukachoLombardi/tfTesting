@@ -101,7 +101,8 @@ class PawnChessTrainer:
 
         return working_board
 
-    def generate_multiple_random_boards(self, amount: int, row_size: int, figs: int, included_fields=None, randomize_pawns=True) -> list[list]:
+    def generate_multiple_random_boards(self, amount: int, row_size: int, figs: int, included_fields=None,
+                                        randomize_pawns=True) -> list[list]:
         generated_boards = []
         for i in range(amount):
             while True:
@@ -168,8 +169,9 @@ class PawnChessTrainer:
         # 0. declare the game as over (by pieces having won or by only one color remaining)
         # 1. win the game
         # 2. attack enemy pieces
-        # 3. move forward
-        # 4. declare the game as over (by the player being blocked) -> base case
+        # 3. move forward (without getting attacked) # checked in move action
+        # 4. move forward
+        # 5. declare the game as over (by the player being blocked) -> base case
 
         def transform_board(board_to_transform: list, moving_piece, moving_destination) -> list:
             transforming_board = board_to_transform.copy()
@@ -179,16 +181,27 @@ class PawnChessTrainer:
             return transforming_board
 
         def are_in_same_row(field_1, field_2):
-            board = [0]*64
+            board = [0] * 72
             board[field_1] = 1
             board[field_2] = 2
             list_chunks = []
             for i in range(7, 64, 8):
-                list_chunks.append(board[i-7:i+1])
+                list_chunks.append(board[i - 7:i + 1])
+
             for chunk in list_chunks:
-                if (1 and 2) in chunk:
+                if 1 in chunk and 2 in chunk:
                     return True
             return False
+
+        def get_row_number(field_1):
+            board = [0] * 72
+            board[field_1] = 1
+            list_chunks = []
+            for i in range(7, 64, 8):
+                list_chunks.append(board[i - 7:i + 1])
+            for chunk in list_chunks:
+                if 1 in chunk:
+                    return list_chunks.index(chunk)
 
         working_board = start_board.copy()
 
@@ -208,7 +221,7 @@ class PawnChessTrainer:
                 player_pieces.append(index)
             if working_board[index] == 2:
                 enemy_pieces.append(index)
-        non_blocked_player_pieces = player_pieces
+        non_blocked_player_pieces = player_pieces.copy()
 
         attackers_attacked = []
         possible_winning_pieces = []
@@ -217,16 +230,14 @@ class PawnChessTrainer:
         # filtering out blocked pieces
         current_state = State.OVER
         for non_blocked_player_piece in non_blocked_player_pieces:
-            for checked_piece in enemy_pieces + player_pieces:
-                # piece is blocked or on last row
-                if non_blocked_player_piece - checked_piece == 8 or non_blocked_player_piece in range(0, 8):
-                    if non_blocked_player_piece in non_blocked_player_pieces:
-                        non_blocked_player_pieces.remove(non_blocked_player_piece)
+            # piece is blocked or on last row
+            if non_blocked_player_piece-8 in enemy_pieces or non_blocked_player_piece-8 in player_pieces \
+                    or non_blocked_player_piece in range(0, 8):
+                non_blocked_player_pieces.remove(non_blocked_player_piece)
 
+        # declaring the game as over (by blocking) (5.) -> standard case
 
-        # declaring the game as over (by blocking) (4.) -> standard case
-
-        # checking for possible forward movement (3.)
+        # checking for possible forward movement (4.)
         if len(non_blocked_player_pieces) > 0:
             current_state = State.MOVE
             # also filtering for pieces eligible for first move bonus
@@ -234,10 +245,11 @@ class PawnChessTrainer:
                 if non_blocked_player_piece - 16 not in enemy_pieces and non_blocked_player_piece in range(56, 64):
                     two_field_movable_pieces.append(non_blocked_player_piece)
 
-        # checking for attackable pieces (2.)
+        # checking for attackable pieces (2.) (3. in end check)
         for player_piece in player_pieces:
             for enemy_piece in enemy_pieces:
-                if player_piece - enemy_piece in [7, 9] and not are_in_same_row(player_piece, enemy_piece):
+                if player_piece - enemy_piece in [7, 9] and \
+                        get_row_number(player_piece) - get_row_number(enemy_piece) == 1:
                     current_state = State.ATTACK
                     attackers_attacked.append([player_piece, enemy_piece])
 
@@ -261,9 +273,6 @@ class PawnChessTrainer:
         chosen_piece: int
         chosen_destination: int
         match current_state:
-            case State.OVER:
-                chosen_piece = 0
-                chosen_destination = 0
             case State.WIN:
                 chosen_piece = random.choice(possible_winning_pieces)
                 chosen_destination = chosen_piece - 8
@@ -273,12 +282,41 @@ class PawnChessTrainer:
                 chosen_piece = random.choice(possible_attacking_pieces)
                 chosen_destination = possible_attacked_pieces[possible_attacking_pieces.index(chosen_piece)]
             case State.MOVE:
-                chosen_piece = min(non_blocked_player_pieces)
+                movable_pieces = non_blocked_player_pieces.copy()
+
+                print(f"movable_pieces before: {movable_pieces}")
+                for movable_piece in movable_pieces:
+                    if movable_piece in two_field_movable_pieces:
+                        added_distance = 8
+                    else:
+                        added_distance = 0
+
+                    if ((movable_piece-15-added_distance) in enemy_pieces and 4 > get_row_number(movable_piece) - get_row_number(movable_piece-15-added_distance) > 1) \
+                            or ((movable_piece-17-added_distance) in enemy_pieces and 4 > get_row_number(movable_piece) - get_row_number(movable_piece-17-added_distance) > 1):
+                        movable_pieces.remove(movable_piece)
+
+                if len(movable_pieces) == 0:
+                    movable_pieces = non_blocked_player_pieces.copy()
+
+                for movable_piece in movable_pieces:
+                    if movable_piece - 8 in enemy_pieces:
+                        if movable_piece in movable_pieces:
+                            movable_pieces.remove(movable_piece)  # duct taping a weird bug where pieces move onto other pieces
+                if len(movable_pieces) == 0:
+                    current_state = State.OVER
+
+                print(f"movable_pieces after: {movable_pieces}")
+
+                chosen_piece = random.choices([min(movable_pieces),
+                                              random.choice(movable_pieces)], k=1, weights=[2, 3])[0]
+
                 if chosen_piece in two_field_movable_pieces:
                     chosen_destination = chosen_piece - 16
                 else:
                     chosen_destination = chosen_piece - 8
-
+            case State.OVER:
+                chosen_piece = 0
+                chosen_destination = 0
 
         print(f"determined piece {chosen_piece}, chosen destination {chosen_destination} "
               f"with state {current_state}\n"
@@ -287,6 +325,6 @@ class PawnChessTrainer:
               f"enemy_pieces: {enemy_pieces}\n"
               f"attackers_attacked: {attackers_attacked}\n"
               f"possible_winning_pieces: {possible_winning_pieces}\n"
-              f"two_field_movable_pieces: {two_field_movable_pieces}")
+              f"two_field_movable_pieces: {two_field_movable_pieces}\n")
 
         return transform_board(working_board, chosen_piece, chosen_destination)
