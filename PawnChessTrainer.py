@@ -229,7 +229,7 @@ class PawnChessTrainer:
 
         # filtering out blocked pieces
         current_state = State.OVER
-        for non_blocked_player_piece in non_blocked_player_pieces:
+        for non_blocked_player_piece in non_blocked_player_pieces.copy():
             # piece is blocked or on last row
             if non_blocked_player_piece-8 in enemy_pieces or non_blocked_player_piece-8 in player_pieces \
                     or non_blocked_player_piece in range(0, 8):
@@ -285,30 +285,27 @@ class PawnChessTrainer:
                 movable_pieces = non_blocked_player_pieces.copy()
 
                 print(f"movable_pieces before: {movable_pieces}")
-                for movable_piece in movable_pieces:
+
+                for movable_piece in movable_pieces.copy():
                     if movable_piece in two_field_movable_pieces:
                         added_distance = 8
+                        row_distance = 3
                     else:
                         added_distance = 0
+                        row_distance = 2
 
-                    if ((movable_piece-15-added_distance) in enemy_pieces and 4 > get_row_number(movable_piece) - get_row_number(movable_piece-15-added_distance) > 1) \
-                            or ((movable_piece-17-added_distance) in enemy_pieces and 4 > get_row_number(movable_piece) - get_row_number(movable_piece-17-added_distance) > 1):
+                    if ((movable_piece-15-added_distance) in enemy_pieces and get_row_number(movable_piece) - get_row_number(movable_piece-15-added_distance) == row_distance) \
+                            or ((movable_piece-17-added_distance) in enemy_pieces and get_row_number(movable_piece) - get_row_number(movable_piece-17-added_distance) == row_distance):
                         movable_pieces.remove(movable_piece)
 
                 if len(movable_pieces) == 0:
                     movable_pieces = non_blocked_player_pieces.copy()
 
-                for movable_piece in movable_pieces:
-                    if movable_piece - 8 in enemy_pieces:
-                        if movable_piece in movable_pieces:
-                            movable_pieces.remove(movable_piece)  # duct taping a weird bug where pieces move onto other pieces
-                if len(movable_pieces) == 0:
-                    current_state = State.OVER
-
                 print(f"movable_pieces after: {movable_pieces}")
 
                 chosen_piece = random.choices([min(movable_pieces),
-                                              random.choice(movable_pieces)], k=1, weights=[2, 3])[0]
+                                              random.choice(movable_pieces), min(non_blocked_player_pieces),
+                                              random.choice(non_blocked_player_pieces)], k=1, weights=[5, 6, 1, 2])[0]
 
                 if chosen_piece in two_field_movable_pieces:
                     chosen_destination = chosen_piece - 16
