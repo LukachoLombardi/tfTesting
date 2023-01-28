@@ -70,12 +70,12 @@ while True:
                 board_directions = []
                 for index in range(len(board_variants)):
                     board_directions.append(
-                        trainer.convert_boards_to_direction(board_variants[index], board_solutions[index]))
+                        trainer.convert_boards_to_field_directions(board_variants[index], board_solutions[index]))
                 board_directions_file.close()
                 print(board_directions)
 
-                with open("data.txt", "w") as data_out_file:
-                    data_out_file.write(f"{board_variants}\n\n{board_solutions}\n\n{board_directions}")
+                with open("data.py", "w") as data_out_file:
+                    data_out_file.write(f"board_variants={board_variants}\n\nboard_solutions={board_solutions}\n\nboard_directions={board_directions}")
                 continue
             elif start_field == "s":
                 print("redoing setup")

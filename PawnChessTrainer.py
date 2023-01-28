@@ -129,7 +129,7 @@ class PawnChessTrainer:
     def read_serialized_solutions(self):
         return self._deserialize_training_data("solutions.dat")
 
-    def convert_boards_to_direction(self, start_board: list, end_board: list):
+    def convert_boards_to_field_directions(self, start_board: list, end_board: list):
         if len(start_board) != len(end_board):
             raise Exception(f"boards do not have the same length ({start_board}, {end_board}")
         board_length = len(start_board)
@@ -162,7 +162,15 @@ class PawnChessTrainer:
             print("invalid move, emptying board")
             start_board = [board_length * [0]]
             end_board = [board_length * [0]]
-            return self.convert_boards_to_direction(start_board, end_board)
+            return self.convert_boards_to_field_directions(start_board, end_board)
+
+
+    def convert_field_directions_to_movement_int(self, field_direction: list):
+        if field_direction[1] == 0:
+            return 256
+
+        return (field_direction[0]) * 4 + field_direction[1]
+
 
     def calculate_best_move_64(self, start_board: list) -> list:
         # priority list:
@@ -181,17 +189,7 @@ class PawnChessTrainer:
             return transforming_board
 
         def are_in_same_row(field_1, field_2):
-            board = [0] * 72
-            board[field_1] = 1
-            board[field_2] = 2
-            list_chunks = []
-            for i in range(7, 64, 8):
-                list_chunks.append(board[i - 7:i + 1])
-
-            for chunk in list_chunks:
-                if 1 in chunk and 2 in chunk:
-                    return True
-            return False
+            return get_row_number(field_1) == get_row_number(field_2)
 
         def get_row_number(field_1):
             board = [0] * 72
@@ -294,18 +292,23 @@ class PawnChessTrainer:
                         added_distance = 0
                         row_distance = 2
 
-                    if ((movable_piece-15-added_distance) in enemy_pieces and get_row_number(movable_piece) - get_row_number(movable_piece-15-added_distance) == row_distance) \
-                            or ((movable_piece-17-added_distance) in enemy_pieces and get_row_number(movable_piece) - get_row_number(movable_piece-17-added_distance) == row_distance):
-                        movable_pieces.remove(movable_piece)
+                    # avoiding attacked fields
+                    if ((movable_piece-15-added_distance) in enemy_pieces and get_row_number(movable_piece) - get_row_number(movable_piece-15-added_distance) == row_distance)\
+                        or ((movable_piece-17-added_distance) in enemy_pieces and get_row_number(movable_piece) - get_row_number(movable_piece-17-added_distance) == row_distance):
+                        if not ((movable_piece+1 in player_pieces and are_in_same_row(movable_piece, movable_piece+1))\
+                            or (movable_piece-1 in player_pieces and are_in_same_row(movable_piece, movable_piece-1))):
+                            movable_pieces.remove(movable_piece)
 
                 if len(movable_pieces) == 0:
                     movable_pieces = non_blocked_player_pieces.copy()
+                    print("enabling sacrifice")
 
                 print(f"movable_pieces after: {movable_pieces}")
 
                 chosen_piece = random.choices([min(movable_pieces),
-                                              random.choice(movable_pieces), min(non_blocked_player_pieces),
-                                              random.choice(non_blocked_player_pieces)], k=1, weights=[5, 6, 1, 2])[0]
+                                              random.choice(movable_pieces),
+                                               min(non_blocked_player_pieces),
+                                               random.choice(non_blocked_player_pieces)], k=1, weights=[5, 6, 2, 1])[0]
 
                 if chosen_piece in two_field_movable_pieces:
                     chosen_destination = chosen_piece - 16
