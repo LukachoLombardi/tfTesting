@@ -54,8 +54,8 @@ x = tf.keras.layers.Dropout(0.5)(x)
 result = tf.keras.layers.Dense(257,  name="result")(x)
 
 
-#model = tf.keras.Model(inputs=inputs, outputs=result)
-model = keras.models.load_model("pawn_chess_model_1.0.1")
+model = tf.keras.Model(inputs=inputs, outputs=result)
+#model = keras.models.load_model("pawn_chess_model_1.0.0_lowmem")
 
 print(model.summary())
 tf.keras.utils.plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)

@@ -129,6 +129,14 @@ class PawnChessTrainer:
     def read_serialized_solutions(self):
         return self._deserialize_training_data("solutions.dat")
 
+    difference_mappings = {
+        0: 0,
+        7: 1,  # left
+        8: 2,  # straight
+        9: 3,  # right
+        16: 4  # 2 straight
+    }
+
     def convert_boards_to_field_directions(self, start_board: list, end_board: list):
         if len(start_board) != len(end_board):
             raise Exception(f"boards do not have the same length ({start_board}, {end_board}")
@@ -142,22 +150,14 @@ class PawnChessTrainer:
             changed_field_indexes = [0, 0]
             return changed_field_indexes
 
-        difference_mappings = {
-            0: 0,  # no change
-            7: 1,  # left
-            8: 2,  # straight
-            9: 3,  # right
-            16: 4  # 2 straight
-        }
-
         if len(changed_field_indexes) == 0 and (1 in start_board):
-            return [start_board.index(1), difference_mappings[0]]
+            return [start_board.index(1), self.difference_mappings[0]]
         elif 1 not in start_board:
             return [randint(0, len(start_board) - 1), 0]
 
         index_difference = changed_field_indexes[1] - changed_field_indexes[0]
         try:
-            return [changed_field_indexes[1], difference_mappings[index_difference]]
+            return [changed_field_indexes[1], self.difference_mappings[index_difference]]
         except KeyError:
             print("invalid move, emptying board")
             start_board = [board_length * [0]]
@@ -169,10 +169,30 @@ class PawnChessTrainer:
         if field_direction[1] == 0:
             return 256
 
+        field_direction[1] -= 1
         return (field_direction[0]) * 4 + field_direction[1]
 
+    def transform_board(self, board_to_transform: list, moving_piece, moving_destination) -> list:
+        transforming_board = board_to_transform.copy()
+        moving_piece_value = transforming_board[moving_piece]
+        transforming_board[moving_piece] = 0
+        transforming_board[moving_destination] = moving_piece_value
+        return transforming_board
 
-    def calculate_best_move_64(self, start_board: list) -> list:
+    def are_in_same_row(self, field_1, field_2):
+        return self.get_row_number(field_1) == self.get_row_number(field_2)
+
+    def get_row_number(self, field_1):
+        board = [0] * 72
+        board[field_1] = 1
+        list_chunks = []
+        for i in range(7, 64, 8):
+            list_chunks.append(board[i - 7:i + 1])
+        for chunk in list_chunks:
+            if 1 in chunk:
+                return list_chunks.index(chunk)
+
+    def calculate_best_move_64(self, start_board: list, verbose=True) -> list:
         # priority list:
         # 0. declare the game as over (by pieces having won or by only one color remaining)
         # 1. win the game
@@ -180,26 +200,6 @@ class PawnChessTrainer:
         # 3. move forward (without getting attacked) # checked in move action
         # 4. move forward
         # 5. declare the game as over (by the player being blocked) -> base case
-
-        def transform_board(board_to_transform: list, moving_piece, moving_destination) -> list:
-            transforming_board = board_to_transform.copy()
-            moving_piece_value = transforming_board[moving_piece]
-            transforming_board[moving_piece] = 0
-            transforming_board[moving_destination] = moving_piece_value
-            return transforming_board
-
-        def are_in_same_row(field_1, field_2):
-            return get_row_number(field_1) == get_row_number(field_2)
-
-        def get_row_number(field_1):
-            board = [0] * 72
-            board[field_1] = 1
-            list_chunks = []
-            for i in range(7, 64, 8):
-                list_chunks.append(board[i - 7:i + 1])
-            for chunk in list_chunks:
-                if 1 in chunk:
-                    return list_chunks.index(chunk)
 
         working_board = start_board.copy()
 
@@ -247,7 +247,7 @@ class PawnChessTrainer:
         for player_piece in player_pieces:
             for enemy_piece in enemy_pieces:
                 if player_piece - enemy_piece in [7, 9] and \
-                        get_row_number(player_piece) - get_row_number(enemy_piece) == 1:
+                        self.get_row_number(player_piece) - self.get_row_number(enemy_piece) == 1:
                     current_state = State.ATTACK
                     attackers_attacked.append([player_piece, enemy_piece])
 
@@ -282,8 +282,6 @@ class PawnChessTrainer:
             case State.MOVE:
                 movable_pieces = non_blocked_player_pieces.copy()
 
-                print(f"movable_pieces before: {movable_pieces}")
-
                 for movable_piece in movable_pieces.copy():
                     if movable_piece in two_field_movable_pieces:
                         added_distance = 8
@@ -293,17 +291,15 @@ class PawnChessTrainer:
                         row_distance = 2
 
                     # avoiding attacked fields
-                    if ((movable_piece-15-added_distance) in enemy_pieces and get_row_number(movable_piece) - get_row_number(movable_piece-15-added_distance) == row_distance)\
-                        or ((movable_piece-17-added_distance) in enemy_pieces and get_row_number(movable_piece) - get_row_number(movable_piece-17-added_distance) == row_distance):
-                        if not ((movable_piece+1 in player_pieces and are_in_same_row(movable_piece, movable_piece+1))\
-                            or (movable_piece-1 in player_pieces and are_in_same_row(movable_piece, movable_piece-1))):
+                    if ((movable_piece-15-added_distance) in enemy_pieces and self.get_row_number(movable_piece) - self.get_row_number(movable_piece - 15 - added_distance) == row_distance)\
+                        or ((movable_piece-17-added_distance) in enemy_pieces and self.get_row_number(movable_piece) - self.get_row_number(movable_piece - 17 - added_distance) == row_distance):
+                        if not ((movable_piece + 1 in player_pieces and self.are_in_same_row(movable_piece, movable_piece + 1))\
+                            or (movable_piece - 1 in player_pieces and self.are_in_same_row(movable_piece, movable_piece - 1))):
                             movable_pieces.remove(movable_piece)
 
-                if len(movable_pieces) == 0:
+                """if len(movable_pieces) == 0:
                     movable_pieces = non_blocked_player_pieces.copy()
-                    print("enabling sacrifice")
-
-                print(f"movable_pieces after: {movable_pieces}")
+                    print("enabled sacrifice")"""
 
                 chosen_piece = random.choices([min(movable_pieces),
                                               random.choice(movable_pieces),
@@ -317,14 +313,14 @@ class PawnChessTrainer:
             case State.OVER:
                 chosen_piece = 0
                 chosen_destination = 0
+        if verbose:
+            print(f"determined piece {chosen_piece}, chosen destination {chosen_destination} "
+                  f"with state {current_state}\n"
+                  f"player_pieces: {player_pieces}\n"
+                  f"non_blocked_player_pieces: {non_blocked_player_pieces}\n"
+                  f"enemy_pieces: {enemy_pieces}\n"
+                  f"attackers_attacked: {attackers_attacked}\n"
+                  f"possible_winning_pieces: {possible_winning_pieces}\n"
+                  f"two_field_movable_pieces: {two_field_movable_pieces}\n")
 
-        print(f"determined piece {chosen_piece}, chosen destination {chosen_destination} "
-              f"with state {current_state}\n"
-              f"player_pieces: {player_pieces}\n"
-              f"non_blocked_player_pieces: {non_blocked_player_pieces}\n"
-              f"enemy_pieces: {enemy_pieces}\n"
-              f"attackers_attacked: {attackers_attacked}\n"
-              f"possible_winning_pieces: {possible_winning_pieces}\n"
-              f"two_field_movable_pieces: {two_field_movable_pieces}\n")
-
-        return transform_board(working_board, chosen_piece, chosen_destination)
+        return self.transform_board(working_board, chosen_piece, chosen_destination)
