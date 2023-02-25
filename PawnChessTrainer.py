@@ -297,14 +297,14 @@ class PawnChessTrainer:
                             or (movable_piece - 1 in player_pieces and self.are_in_same_row(movable_piece, movable_piece - 1))):
                             movable_pieces.remove(movable_piece)
 
-                """if len(movable_pieces) == 0:
+                if len(movable_pieces) == 0:
                     movable_pieces = non_blocked_player_pieces.copy()
-                    print("enabled sacrifice")"""
+                    print("enabled sacrifice")
 
                 chosen_piece = random.choices([min(movable_pieces),
                                               random.choice(movable_pieces),
                                                min(non_blocked_player_pieces),
-                                               random.choice(non_blocked_player_pieces)], k=1, weights=[5, 6, 2, 1])[0]
+                                               random.choice(non_blocked_player_pieces)], k=1, weights=[5, 6, 1, 2])[0]
 
                 if chosen_piece in two_field_movable_pieces:
                     chosen_destination = chosen_piece - 16

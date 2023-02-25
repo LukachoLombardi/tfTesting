@@ -3,7 +3,6 @@ from PawnChessTrainer import pp
 from PawnChessTrainer import PawnChessTrainer
 
 trainer = PawnChessTrainer()
-
 default_board = [2] * 8 + [0] * 48 + [1] * 8
 
 def reverse_colors(board):
@@ -15,6 +14,7 @@ def reverse_colors(board):
     return board
 
 def generate_new_batch(amount):
+    file_blocked = True
 
     board_variants = []
     board_solutions = []
@@ -24,6 +24,7 @@ def generate_new_batch(amount):
     for i in range(amount):
         board = default_board.copy()
         while board != last_board:
+
             last_board = board.copy()
 
             board_variants.append(board)
@@ -39,8 +40,18 @@ def generate_new_batch(amount):
             board.reverse()
             board = reverse_colors(board.copy())
 
+    indexes_to_delete = []
     for index in range(len(board_solutions)):
         board_solutions[index] = trainer.convert_field_directions_to_movement_int(board_solutions[index])
+
+        if board_solutions[index] == 256:
+            indexes_to_delete.append(index)
+
+    indexes_to_delete.reverse()
+    for index in indexes_to_delete:
+        board_variants.pop(index)
+        board_solutions.pop(index)
+
 
     data_file = open("algorithmic_data.py", "w")
     data_file.write(f"board_variants = {board_variants}\nboard_solutions = {board_solutions}")

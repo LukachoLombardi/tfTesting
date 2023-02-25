@@ -1,3 +1,5 @@
+import time
+
 import keras.utils
 import matplotlib.pyplot as plt
 from keras import regularizers
@@ -15,7 +17,8 @@ os.environ["PATH"] += os.pathsep + "C:/Program Files (x86)/Graphviz/bin/"
 
 trainer = PawnChessTrainer()
 
-ag.generate_new_batch(1024)
+ag.generate_new_batch(2048)
+time.sleep(3)
 train_fig_starts = algorithmic_data.board_variants
 train_fig_moves = algorithmic_data.board_solutions
 
@@ -45,17 +48,16 @@ train_fig_starts = np.array(train_fig_starts)
 train_fig_moves = keras.utils.to_categorical(train_fig_moves)
 
 inputs = tf.keras.layers.Input(shape=64, name="board_input")
+inputs = tf.keras.layers.BatchNormalization()(inputs)
 
-x = tf.keras.layers.Dense(512, activation="relu", kernel_regularizer=regularizers.l2(0.001))(inputs)
-x = tf.keras.layers.Dropout(0.5)(x)
-x = tf.keras.layers.Dense(512, activation="relu", kernel_regularizer=regularizers.l2(0.001))(x)
-x = tf.keras.layers.Dropout(0.5)(x)
+x = tf.keras.layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l2(0.001))(inputs)
+x = tf.keras.layers.Dense(16, activation="relu", kernel_regularizer=regularizers.l2(0.001))(x)
 
-result = tf.keras.layers.Dense(257,  name="result")(x)
+result = tf.keras.layers.Dense(256,  name="result")(x)
 
 
 model = tf.keras.Model(inputs=inputs, outputs=result)
-#model = keras.models.load_model("pawn_chess_model_1.0.0_lowmem")
+#model = keras.models.load_model("pawn_chess_model")
 
 print(model.summary())
 tf.keras.utils.plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
@@ -65,7 +67,7 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 
-history = model.fit(np.array(train_fig_starts), train_fig_moves, epochs=100, validation_split=0.3)
+history = model.fit(np.array(train_fig_starts), train_fig_moves, epochs=100, validation_split=0.2)
 
 plt.plot(history.history['accuracy'])
 plt.plot(history.history['val_accuracy'])

@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 board = default_board.copy()
 
 model: keras.Model
-model = keras.models.load_model("pawn_chess_model_1.0.2")
+model = keras.models.load_model("pawn_chess_model_2.0.1")
 trainer = PawnChessTrainer()
 
 difference_mappings = {
