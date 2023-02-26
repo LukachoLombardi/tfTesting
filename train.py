@@ -17,7 +17,7 @@ os.environ["PATH"] += os.pathsep + "C:/Program Files (x86)/Graphviz/bin/"
 
 trainer = PawnChessTrainer()
 
-ag.generate_new_batch(2048)
+ag.generate_new_batch(1024)
 time.sleep(3)
 train_fig_starts = algorithmic_data.board_variants
 train_fig_moves = algorithmic_data.board_solutions
@@ -45,7 +45,7 @@ def insert_sublist_members(lst1, lst2, index):
     return working_list_1
 
 train_fig_starts = np.array(train_fig_starts)
-train_fig_moves = keras.utils.to_categorical(train_fig_moves)
+train_fig_moves = keras.utils.to_categorical(train_fig_moves, num_classes=256)
 
 inputs = tf.keras.layers.Input(shape=64, name="board_input")
 inputs = tf.keras.layers.BatchNormalization()(inputs)

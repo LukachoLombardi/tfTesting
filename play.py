@@ -6,23 +6,47 @@ from PawnChessTrainer import PawnChessTrainer
 from algorithmic_batch_generation import default_board, reverse_colors
 from matplotlib import pyplot as plt
 
-board = default_board.copy()
 
-model: keras.Model
-model = keras.models.load_model("pawn_chess_model_2.0.1")
+class MCUModel:
+    import serial
+    import time
+    from tensorflow import keras
+
+    arduino: serial.Serial
+
+    def __init__(self):
+        self.arduino = self.serial.Serial(port=input("enter COM port: "), baudrate=115200, timeout=.1)
+        while self.arduino.in_waiting > 0:
+            print(self.arduino.readline())
+        self.arduino.flush()
+
+
+    def predict(self, prompt: list):
+        prompt_as_string = str(prompt).replace("[", "").replace("]", "").replace(",", "").replace(" ", "")
+        self.arduino.write(bytes(prompt_as_string, 'ascii'))
+        self.time.sleep(1)
+        data = self.arduino.readline()
+        print(prompt_as_string)
+        print(data)
+        return keras.utils.to_categorical(int(data))
+
+
+board = default_board.copy()
+model = MCUModel() #keras.models.load_model("pawn_chess_model_2.0.1")
 trainer = PawnChessTrainer()
 
 difference_mappings = {
-    0: 7, # right
+    0: 7,  # right
     1: 8,  # straight
     2: 9,  # left
     3: 16  # 2 straight
 }
 
+
 def is_move_valid(board_in: list, move_int: int) -> bool:
     working_board = board_in.copy()
     field = int(move_int/4)
-    move = move_int%4
+    move = move_int % 4
     if board_in[field] != 1:
         print("wrong color")
         return False
@@ -68,13 +92,11 @@ def draw_board(in_board: list):
     plt.show(block=False)
 
 
-
-
 draw_board(board)
 end_game = False
 c = 0
 while True:
-    if c%2==0:
+    if c % 2 == 0:
         alg_board = trainer.calculate_best_move_64(board.copy(), verbose=False)
         if alg_board == board:
             print("game should be over")
@@ -105,7 +127,7 @@ while True:
                 blocked_moves += 1
 
             if board == alg_board:
-                print("NN made predicted move")
+                print("NN made predicted move (alg)")
                 predicted_moves += 1
 
         print(f"blocked_moves: {blocked_moves}")

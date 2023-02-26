@@ -7,11 +7,12 @@
 #define TENSOR_ARENA_SIZE 16 * 1024
 
 Eloquent::TinyML::TensorFlow::TensorFlow<N_INPUTS, N_OUTPUTS, TENSOR_ARENA_SIZE> tf;
-float test_board[64] = {2,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1};
-float result[256];
+
+float currentBoard[N_INPUTS];
+float resultLogits[N_OUTPUTS];
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   Serial.println("ESP32 bootup complete");
 
@@ -23,33 +24,50 @@ void setup() {
   }
   else
   {
-    Serial.println("TF is OK!");
+    Serial.println("ETML (TF) is OK!");
   }
-
-  Serial.println("predicting...");
-
-  tf.predict(test_board, result);
-
-  Serial.println("prediction:");
-
-  int highest = result[0];
-  int highest_index = 0;
-
-  for(int i = 0; i<256;i++)
-  {
-    Serial.println(result[i]);
-    if(result[i] > highest)
-    {
-      highest = result[i];
-      highest_index = i;
-    }
-  }
-
-  Serial.println("max index: ");
-  Serial.print(highest_index);
 }
+
+int latestIndex = 0;
 
 void loop()
 {
+  if(Serial.available() > 0)
+  {
+    currentBoard[latestIndex] = Serial.read() - 48.0;
+    latestIndex++;
+  }
+  if(latestIndex == 64)
+  {
+    Serial.flush();
+    Serial.println(predictMove());
+
+    /*
+    for(int i = 0; i < 64; i++)
+    {
+      Serial.print(currentBoard[i]); Serial.print(",");
+    }
+    Serial.println(""); */
+    latestIndex = 0;
+  }
+}
+
+int predictMove()
+{
+  float resultLogits[256];
+
+  tf.predict(currentBoard, resultLogits);
+
+  int highest = resultLogits[0];
+  int highestIndex = 0;
   
+  for(int i = 0; i<256;i++)
+  {
+    if(resultLogits[i] > highest)
+    {
+      highest = resultLogits[i];
+      highestIndex = i;
+    }
+  }
+  return highestIndex;
 }
