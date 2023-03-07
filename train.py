@@ -10,15 +10,16 @@ import numpy as np
 from PawnChessTrainer import PawnChessTrainer
 import os
 import data
-import algorithmic_data
 import algorithmic_batch_generation as ag
 
 os.environ["PATH"] += os.pathsep + "C:/Program Files (x86)/Graphviz/bin/"
 
 trainer = PawnChessTrainer()
 
-ag.generate_new_batch(1024)
+ag.generate_randomized_solutions(500000)
 time.sleep(3)
+
+import algorithmic_data
 train_fig_starts = algorithmic_data.board_variants
 train_fig_moves = algorithmic_data.board_solutions
 
@@ -51,7 +52,9 @@ inputs = tf.keras.layers.Input(shape=64, name="board_input")
 inputs = tf.keras.layers.BatchNormalization()(inputs)
 
 x = tf.keras.layers.Dense(64, activation="relu", kernel_regularizer=regularizers.l2(0.001))(inputs)
+x = tf.keras.layers.Dropout(0.2)(x)
 x = tf.keras.layers.Dense(16, activation="relu", kernel_regularizer=regularizers.l2(0.001))(x)
+x = tf.keras.layers.Dropout(0.2)(x)
 
 result = tf.keras.layers.Dense(256,  name="result")(x)
 

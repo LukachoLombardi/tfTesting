@@ -192,7 +192,7 @@ class PawnChessTrainer:
             if 1 in chunk:
                 return list_chunks.index(chunk)
 
-    def calculate_best_move_64(self, start_board: list, verbose=True) -> list:
+    def calculate_best_move_64(self, start_board: list, verbose=True, randomize: bool = True) -> list:
         # priority list:
         # 0. declare the game as over (by pieces having won or by only one color remaining)
         # 1. win the game
@@ -200,6 +200,12 @@ class PawnChessTrainer:
         # 3. move forward (without getting attacked) # checked in move action
         # 4. move forward
         # 5. declare the game as over (by the player being blocked) -> base case
+
+        def choose(items):
+            if randomize:
+                return random.choice(items)
+            else:
+                return min(items)
 
         working_board = start_board.copy()
 
@@ -272,12 +278,12 @@ class PawnChessTrainer:
         chosen_destination: int
         match current_state:
             case State.WIN:
-                chosen_piece = random.choice(possible_winning_pieces)
+                chosen_piece = choose(possible_winning_pieces)
                 chosen_destination = chosen_piece - 8
             case State.ATTACK:
                 possible_attacking_pieces = [item[0] for item in attackers_attacked]
                 possible_attacked_pieces = [item[1] for item in attackers_attacked]
-                chosen_piece = random.choice(possible_attacking_pieces)
+                chosen_piece = choose(possible_attacking_pieces)
                 chosen_destination = possible_attacked_pieces[possible_attacking_pieces.index(chosen_piece)]
             case State.MOVE:
                 movable_pieces = non_blocked_player_pieces.copy()
@@ -301,10 +307,13 @@ class PawnChessTrainer:
                     movable_pieces = non_blocked_player_pieces.copy()
                     print("enabled sacrifice")
 
-                chosen_piece = random.choices([min(movable_pieces),
-                                              random.choice(movable_pieces),
-                                               min(non_blocked_player_pieces),
-                                               random.choice(non_blocked_player_pieces)], k=1, weights=[5, 6, 1, 2])[0]
+                if randomize:
+                    chosen_piece = random.choices([min(movable_pieces),
+                                                  random.choice(movable_pieces),
+                                                   min(non_blocked_player_pieces),
+                                                   random.choice(non_blocked_player_pieces)], k=1, weights=[5, 6, 1, 2])[0]
+                else:
+                    chosen_piece = min(movable_pieces)
 
                 if chosen_piece in two_field_movable_pieces:
                     chosen_destination = chosen_piece - 16

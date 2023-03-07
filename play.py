@@ -7,6 +7,17 @@ from algorithmic_batch_generation import default_board, reverse_colors
 from matplotlib import pyplot as plt
 
 
+def prompt_solution(board: list, input_start, input_destination):
+    board_variant = list(board)
+    solved_board = list(board)
+
+    start_int = int(input_start)
+    solved_board[int(input_destination)] = board_variant[start_int]
+    solved_board[start_int] = 0
+
+    return solved_board
+
+
 class MCUModel:
     import serial
     import time
@@ -20,7 +31,6 @@ class MCUModel:
             print(self.arduino.readline())
         self.arduino.flush()
 
-
     def predict(self, prompt: list):
         prompt_as_string = str(prompt).replace("[", "").replace("]", "").replace(",", "").replace(" ", "")
         self.arduino.write(bytes(prompt_as_string, 'ascii'))
@@ -32,7 +42,8 @@ class MCUModel:
 
 
 board = default_board.copy()
-model = MCUModel() #keras.models.load_model("pawn_chess_model_2.0.1")
+model = MCUModel()
+# model = keras.models.load_model("pawn_chess_model_2.0.1")
 trainer = PawnChessTrainer()
 
 difference_mappings = {
@@ -45,14 +56,14 @@ difference_mappings = {
 
 def is_move_valid(board_in: list, move_int: int) -> bool:
     working_board = board_in.copy()
-    field = int(move_int/4)
+    field = int(move_int / 4)
     move = move_int % 4
     if board_in[field] != 1:
         print("wrong color")
         return False
     match move:
-        case 0|2:
-            if board_in[field - difference_mappings[move]] != 2 or\
+        case 0 | 2:
+            if board_in[field - difference_mappings[move]] != 2 or \
                     trainer.are_in_same_row(field - difference_mappings[move], field):
                 print("attacked piece missing")
                 return False
@@ -66,6 +77,7 @@ def is_move_valid(board_in: list, move_int: int) -> bool:
                 return False
     return True
 
+
 field_color_dict = {
     0: Image.open("white.png"),
     1: Image.open("blue.png"),
@@ -74,12 +86,14 @@ field_color_dict = {
 
 blocked_moves = 0
 predicted_moves = 0
+
+
 def draw_board(in_board: list):
     plt.Figure(figsize=(10, 10))
     row_size = int(sqrt(len(in_board)))
     for i in range(len(in_board)):
         plt.subplot(row_size, row_size, i + 1)
-        if i == len(in_board)-1:
+        if i == len(in_board) - 1:
             plt.cla()
             plt.text(s=f"blocked_moves: {blocked_moves}", x=-3, y=1, fontsize=10)
             plt.text(s=f"predicted_moves: {predicted_moves}", x=-3, y=1.5, fontsize=10)
@@ -91,6 +105,8 @@ def draw_board(in_board: list):
         plt.fill()
     plt.show(block=False)
 
+
+use_alg = bool({"True": True, "False": False}[input("use alg: ")])
 
 draw_board(board)
 end_game = False
@@ -136,7 +152,12 @@ while True:
         draw_board(board.copy())
         print("\n")
     else:
-        board = trainer.calculate_best_move_64(board.copy())
+        if use_alg:
+            board = trainer.calculate_best_move_64(board.copy())
+        else:
+            board.reverse()
+            board = prompt_solution(board.copy(), int(input("from: ")), int(input("to: ")))
+            board.reverse()
         board.reverse()
         draw_board(reverse_colors(board.copy()))
         board.reverse()
@@ -148,4 +169,4 @@ while True:
 
     board.reverse()
     board = reverse_colors(board.copy())
-    c+=1
+    c += 1

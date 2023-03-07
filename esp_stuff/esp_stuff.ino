@@ -1,6 +1,6 @@
 #include <EloquentTinyML.h>
 #include <eloquent_tinyml/tensorflow.h>
-#include "c_model.h"
+#include "c_model_3.h"
 
 #define N_INPUTS 64
 #define N_OUTPUTS 256
